@@ -754,7 +754,17 @@ function showHome() {
 }
 
 // QUIZ
-function shuffle(arr){const a=[...arr];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function shuffle(arr) {
+  const a = [...arr];
+  // Χρησιμοποιεί crypto για πραγματικά τυχαία σειρά
+  const rand = new Uint32Array(a.length);
+  crypto.getRandomValues(rand);
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = rand[i] % (i + 1);
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
 function startQuiz() {
   if (!remoteData.questions.length) { alert('Δεν υπάρχουν ερωτήσεις ακόμα.'); return; }
