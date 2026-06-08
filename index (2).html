@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Μαθηματικά Κατεύθυνσης Γ΄ Λυκείου</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#1a1a2e;--ink2:#3d3d5c;--ink3:#7a7a9a;
+  --paper:#faf8f3;--paper2:#f0ede4;--paper3:#e8e3d7;
+  --accent:#2d6a4f;--accent2:#40916c;--accent-light:#d8f3dc;
+  --red:#c1121f;--red-light:#ffe8ea;
+  --gold:#b5830a;--gold-light:#fff3cd;
+  --border:#d4cfc3;
+  --font-body:'IBM Plex Sans',sans-serif;
+  --font-display:'Libre Baskerville',serif;
+  --radius:6px;--radius-lg:10px;
+}
+body{font-family:var(--font-body);background:var(--paper);color:var(--ink);min-height:100vh;line-height:1.6}
+.hidden{display:none!important}
+.screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem}
+
+/* LOADING */
+#screen-loading{background:var(--ink)}
+.loading-inner{text-align:center}
+.loading-symbol{font-family:var(--font-display);font-size:3rem;color:#fff;display:block;margin-bottom:1rem;animation:pulse 1.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+.loading-text{font-size:0.85rem;color:rgba(255,255,255,0.4);letter-spacing:0.1em}
+.loading-error{color:#ff7b7b;font-size:0.85rem;margin-top:1rem;max-width:300px;text-align:center}
+
+/* LOGIN */
+#screen-login{background:var(--ink);position:relative;overflow:hidden}
+#screen-login::before{content:'';position:absolute;top:-120px;left:-80px;width:400px;height:400px;background:radial-gradient(circle,rgba(45,106,79,0.3) 0%,transparent 70%);pointer-events:none}
+#screen-login::after{content:'';position:absolute;bottom:-80px;right:-60px;width:300px;height:300px;background:radial-gradient(circle,rgba(64,145,108,0.2) 0%,transparent 70%);pointer-events:none}
+.login-box{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:var(--radius-lg);padding:2.5rem 2rem;width:100%;max-width:380px;position:relative;z-index:1}
+.login-logo{text-align:center;margin-bottom:2rem}
+.login-logo .greek-letter{font-family:var(--font-display);font-size:3rem;color:#fff;display:block;line-height:1}
+.login-logo .subtitle{font-size:0.75rem;color:rgba(255,255,255,0.4);letter-spacing:0.15em;text-transform:uppercase;margin-top:0.4rem}
+.login-title{font-family:var(--font-display);font-size:1.1rem;color:rgba(255,255,255,0.85);text-align:center;margin-bottom:0.25rem}
+.login-sub{font-size:0.8rem;color:rgba(255,255,255,0.4);text-align:center;margin-bottom:1.8rem}
+.field{margin-bottom:1rem}
+.field label{display:block;font-size:0.72rem;color:rgba(255,255,255,0.5);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px}
+.field input{width:100%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:var(--radius);padding:10px 14px;color:#fff;font-size:0.95rem;font-family:var(--font-body);outline:none;transition:border 0.2s}
+.field input:focus{border-color:var(--accent2)}
+.field input::placeholder{color:rgba(255,255,255,0.25)}
+.btn-primary{width:100%;margin-top:0.4rem;background:var(--accent);border:none;border-radius:var(--radius);padding:11px;color:#fff;font-family:var(--font-body);font-size:0.95rem;font-weight:500;cursor:pointer;transition:background 0.2s}
+.btn-primary:hover{background:var(--accent2)}
+.btn-primary:disabled{background:#444;cursor:not-allowed}
+.login-error{color:#ff7b7b;font-size:0.8rem;text-align:center;margin-top:0.8rem;min-height:1.2em}
+.admin-link{text-align:center;margin-top:1.2rem}
+.admin-link a{font-size:0.75rem;color:rgba(255,255,255,0.25);text-decoration:none;transition:color 0.2s}
+.admin-link a:hover{color:rgba(255,255,255,0.5)}
+
+/* ADMIN */
+#screen-admin{align-items:stretch;justify-content:flex-start;padding:0;background:var(--paper)}
+.admin-topbar{background:#fff;border-bottom:1px solid var(--border);padding:0.85rem 2rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;flex-wrap:wrap;gap:0.5rem}
+.admin-topbar-title{font-family:var(--font-display);font-size:1rem;color:var(--ink)}
+.admin-topbar-actions{display:flex;gap:0.6rem;align-items:center;flex-wrap:wrap}
+.btn-sm{padding:6px 14px;border-radius:var(--radius);font-size:0.8rem;font-family:var(--font-body);cursor:pointer;border:1px solid var(--border);background:#fff;color:var(--ink2);transition:all 0.15s}
+.btn-sm:hover{background:var(--paper2)}
+.btn-sm:disabled{opacity:0.5;cursor:not-allowed}
+.btn-sm.danger{border-color:#fca5a5;color:var(--red);background:#fff}
+.btn-sm.danger:hover{background:var(--red-light)}
+.admin-body{padding:2rem;max-width:900px;margin:0 auto;width:100%}
+.admin-tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:1.8rem}
+.admin-tab{padding:8px 20px;font-size:0.85rem;color:var(--ink3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all 0.15s;font-family:var(--font-body)}
+.admin-tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:500}
+.admin-tab:hover:not(.active){color:var(--ink2)}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+.sync-bar{background:var(--accent-light);border:1px solid #86efac;border-radius:var(--radius);padding:8px 14px;font-size:0.8rem;color:var(--accent);margin-bottom:1.2rem;display:flex;align-items:center;gap:8px}
+.sync-bar.error{background:var(--red-light);border-color:#fca5a5;color:var(--red)}
+.sync-bar.saving{background:var(--gold-light);border-color:#fde68a;color:var(--gold)}
+
+.section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem}
+.section-title{font-family:var(--font-display);font-size:1.1rem;color:var(--ink)}
+.btn-add{background:var(--accent);color:#fff;border:none;border-radius:var(--radius);padding:8px 16px;font-size:0.8rem;font-family:var(--font-body);cursor:pointer;transition:background 0.2s}
+.btn-add:hover{background:var(--accent2)}
+.q-list{display:flex;flex-direction:column;gap:0.6rem}
+.q-item{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem 1.1rem;display:flex;align-items:flex-start;gap:1rem;transition:box-shadow 0.15s}
+.q-item:hover{box-shadow:0 2px 8px rgba(0,0,0,0.06)}
+.q-num{font-family:var(--font-display);font-size:0.8rem;color:var(--ink3);min-width:24px;padding-top:2px}
+.q-content{flex:1;min-width:0}
+.q-text{font-size:0.9rem;color:var(--ink);margin-bottom:0.4rem;word-break:break-word}
+.q-meta{display:flex;gap:1rem;flex-wrap:wrap}
+.q-answer{font-size:0.75rem;font-weight:500}
+.q-answer.true{color:var(--accent)}
+.q-answer.false{color:var(--red)}
+.q-page{font-size:0.75rem;color:var(--ink3)}
+.q-actions{display:flex;gap:0.4rem;flex-shrink:0}
+.btn-icon{background:none;border:1px solid var(--border);border-radius:var(--radius);width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:0.75rem;transition:all 0.15s}
+.btn-icon.edit:hover{background:var(--gold-light);border-color:#fde68a;color:var(--gold)}
+.btn-icon.del:hover{background:var(--red-light);border-color:#fca5a5;color:var(--red)}
+.empty-state{text-align:center;padding:3rem 1rem;color:var(--ink3)}
+.empty-state .big{font-size:2.5rem;margin-bottom:0.5rem}
+.empty-state p{font-size:0.85rem}
+
+.results-table{width:100%;border-collapse:collapse;font-size:0.85rem}
+.results-table th{text-align:left;padding:8px 12px;font-size:0.72rem;font-weight:500;color:var(--ink3);letter-spacing:0.08em;text-transform:uppercase;border-bottom:1px solid var(--border);background:var(--paper2)}
+.results-table td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--ink);vertical-align:middle}
+.results-table tr:last-child td{border-bottom:none}
+.results-table tr:hover td{background:var(--paper)}
+.score-pill{display:inline-block;padding:2px 10px;border-radius:20px;font-size:0.75rem;font-weight:600}
+.score-pill.high{background:var(--accent-light);color:var(--accent)}
+.score-pill.mid{background:var(--gold-light);color:var(--gold)}
+.score-pill.low{background:var(--red-light);color:var(--red)}
+.table-wrap{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
+.results-filters{display:flex;gap:0.8rem;margin-bottom:1rem;flex-wrap:wrap;align-items:center}
+.results-filters input{border:1px solid var(--border);border-radius:var(--radius);padding:6px 12px;font-size:0.82rem;font-family:var(--font-body);color:var(--ink);outline:none;background:#fff}
+.results-filters input:focus{border-color:var(--accent2)}
+.clear-results-btn{margin-left:auto;padding:6px 14px;border-radius:var(--radius);font-size:0.78rem;border:1px solid #fca5a5;color:var(--red);background:#fff;cursor:pointer;font-family:var(--font-body)}
+.clear-results-btn:hover{background:var(--red-light)}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;z-index:999;padding:1rem}
+.modal{background:#fff;border-radius:var(--radius-lg);padding:1.8rem;width:100%;max-width:520px;max-height:90vh;overflow-y:auto}
+.modal h2{font-family:var(--font-display);font-size:1.1rem;color:var(--ink);margin-bottom:1.4rem}
+.form-group{margin-bottom:1.1rem}
+.form-group label{display:block;font-size:0.75rem;color:var(--ink3);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:5px}
+.form-group input,.form-group textarea{width:100%;border:1px solid var(--border);border-radius:var(--radius);padding:9px 12px;font-size:0.9rem;font-family:var(--font-body);color:var(--ink);outline:none;background:#fff;transition:border 0.2s}
+.form-group input:focus,.form-group textarea:focus{border-color:var(--accent2)}
+.form-group textarea{resize:vertical;min-height:90px}
+.form-row{display:flex;gap:1rem}
+.form-row .form-group{flex:1}
+.radio-group{display:flex;gap:1rem}
+.radio-group label{display:flex;align-items:center;gap:6px;font-size:0.9rem;color:var(--ink);text-transform:none;letter-spacing:0;cursor:pointer}
+.radio-group input[type=radio]{width:auto;cursor:pointer}
+.modal-actions{display:flex;gap:0.6rem;justify-content:flex-end;margin-top:1.4rem}
+.btn-cancel{padding:8px 18px;border-radius:var(--radius);font-size:0.85rem;font-family:var(--font-body);cursor:pointer;border:1px solid var(--border);background:#fff;color:var(--ink2)}
+.btn-cancel:hover{background:var(--paper2)}
+.btn-save{padding:8px 18px;border-radius:var(--radius);font-size:0.85rem;font-family:var(--font-body);cursor:pointer;border:none;background:var(--accent);color:#fff}
+.btn-save:hover{background:var(--accent2)}
+
+/* HOME */
+#screen-home{background:var(--paper)}
+.home-inner{max-width:560px;width:100%;text-align:center}
+.home-badge{display:inline-block;font-size:0.7rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--accent);border:1px solid #86efac;border-radius:20px;padding:4px 14px;margin-bottom:1.2rem}
+.home-title{font-family:var(--font-display);font-size:2rem;color:var(--ink);line-height:1.25;margin-bottom:0.6rem}
+.home-greeting{font-size:1rem;color:var(--ink2);margin-bottom:0.4rem}
+.home-sub{font-size:0.9rem;color:var(--ink3);margin-bottom:2rem}
+.stats-row{display:flex;gap:1rem;justify-content:center;margin-bottom:2rem}
+.stat-box{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:0.8rem 1.4rem;min-width:100px}
+.stat-box .val{font-family:var(--font-display);font-size:1.6rem;color:var(--ink);display:block}
+.stat-box .lbl{font-size:0.72rem;color:var(--ink3);letter-spacing:0.06em;text-transform:uppercase}
+.btn-start{background:var(--accent);color:#fff;border:none;border-radius:var(--radius);padding:14px 36px;font-family:var(--font-display);font-size:1rem;cursor:pointer;transition:background 0.2s}
+.btn-start:hover{background:var(--accent2)}
+.home-logout{margin-top:1.5rem}
+.home-logout a{font-size:0.75rem;color:var(--ink3);text-decoration:none}
+.home-logout a:hover{color:var(--ink)}
+
+/* QUIZ */
+#screen-quiz{background:var(--paper);justify-content:flex-start;padding:0}
+.quiz-topbar{background:#fff;border-bottom:1px solid var(--border);padding:0.8rem 2rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:40}
+.quiz-progress-label{font-size:0.8rem;color:var(--ink3)}
+.quiz-progress-label span{font-weight:600;color:var(--ink)}
+.quiz-prog-bar{width:160px;height:4px;background:var(--paper3);border-radius:2px;overflow:hidden}
+.quiz-prog-fill{height:100%;background:var(--accent);border-radius:2px;transition:width 0.4s ease}
+.quiz-body{padding:2rem;max-width:680px;margin:0 auto;width:100%}
+.q-header{display:flex;align-items:baseline;gap:0.8rem;margin-bottom:1.4rem}
+.q-counter{font-family:var(--font-display);font-size:0.85rem;color:var(--ink3)}
+.q-statement{font-family:var(--font-display);font-size:1.05rem;color:var(--ink);line-height:1.55;flex:1}
+.answer-btns{display:flex;flex-direction:column;gap:0.7rem;margin-bottom:2rem}
+.ans-btn{width:100%;padding:14px 18px;background:#fff;border:1.5px solid var(--border);border-radius:var(--radius-lg);font-family:var(--font-body);font-size:0.95rem;color:var(--ink);cursor:pointer;text-align:left;display:flex;align-items:center;gap:12px;transition:all 0.15s}
+.ans-btn:hover{border-color:var(--accent2);background:var(--accent-light)}
+.ans-btn .badge{width:28px;height:28px;border-radius:50%;background:var(--paper2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:600;flex-shrink:0;transition:all 0.15s}
+.ans-btn:hover .badge{background:var(--accent-light);border-color:var(--accent2);color:var(--accent)}
+.ans-btn.selected{border-color:var(--accent);background:var(--accent-light)}
+.ans-btn.selected .badge{background:var(--accent);border-color:var(--accent);color:#fff}
+.quiz-nav{display:flex;gap:0.8rem;justify-content:flex-end}
+.btn-nav{padding:10px 22px;border-radius:var(--radius);font-family:var(--font-body);font-size:0.88rem;cursor:pointer;transition:all 0.15s;border:1px solid var(--border)}
+.btn-prev{background:#fff;color:var(--ink2)}
+.btn-prev:hover{background:var(--paper2)}
+.btn-next{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-next:hover{background:var(--accent2)}
+.btn-next:disabled{background:var(--paper3);color:var(--ink3);border-color:var(--border);cursor:not-allowed}
+.dot-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:1.8rem}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--paper3);border:1px solid var(--border);transition:all 0.2s}
+.dot.answered{background:var(--accent);border-color:var(--accent)}
+.dot.current{border-color:var(--ink);background:var(--paper2)}
+
+/* RESULTS */
+#screen-results{background:var(--paper);justify-content:flex-start;padding:0}
+.results-header{background:var(--ink);padding:2.5rem 2rem;text-align:center}
+.results-title{font-family:var(--font-display);font-size:1.5rem;color:#fff;margin-bottom:0.3rem}
+.results-name{font-size:0.9rem;color:rgba(255,255,255,0.5);margin-bottom:0.2rem}
+.results-sub{font-size:0.85rem;color:rgba(255,255,255,0.4)}
+.score-circle{display:inline-flex;align-items:center;justify-content:center;width:100px;height:100px;border-radius:50%;border:3px solid var(--accent2);margin:1.5rem 0 0.5rem}
+.score-circle .num{font-family:var(--font-display);font-size:2rem;color:#fff}
+.score-circle .tot{font-size:0.9rem;color:rgba(255,255,255,0.5);margin-left:2px}
+.results-body{padding:2rem;max-width:720px;margin:0 auto;width:100%}
+.results-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:2rem}
+.res-stat{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem;text-align:center}
+.res-stat .val{font-family:var(--font-display);font-size:1.8rem;display:block;margin-bottom:2px}
+.res-stat .lbl{font-size:0.72rem;color:var(--ink3);text-transform:uppercase;letter-spacing:0.06em}
+.res-stat.correct .val{color:var(--accent)}
+.res-stat.wrong .val{color:var(--red)}
+.res-stat.pct .val{color:var(--gold)}
+.review-list{display:flex;flex-direction:column;gap:0.6rem}
+.review-item{background:#fff;border:1px solid var(--border);border-left-width:4px;border-radius:0 var(--radius-lg) var(--radius-lg) 0;padding:1rem 1.1rem;display:grid;grid-template-columns:auto 1fr auto;gap:0.8rem;align-items:start}
+.review-item.correct{border-left-color:var(--accent)}
+.review-item.wrong{border-left-color:var(--red)}
+.review-num{font-family:var(--font-display);font-size:0.8rem;color:var(--ink3);min-width:20px}
+.review-text{font-size:0.88rem;color:var(--ink);line-height:1.5}
+.review-text .your-answer{font-size:0.78rem;margin-top:4px}
+.review-text .your-answer.correct{color:var(--accent)}
+.review-text .your-answer.wrong{color:var(--red)}
+.review-meta{text-align:right;white-space:nowrap}
+.review-result{font-size:0.8rem;font-weight:600;display:block}
+.review-item.correct .review-result{color:var(--accent)}
+.review-item.wrong .review-result{color:var(--red)}
+.review-page{font-size:0.72rem;color:var(--ink3);margin-top:3px}
+.results-actions{display:flex;gap:0.8rem;justify-content:center;margin-top:2rem;padding-bottom:2rem;flex-wrap:wrap}
+.btn-retry{background:var(--accent);color:#fff;border:none;border-radius:var(--radius);padding:12px 28px;font-family:var(--font-body);font-size:0.9rem;cursor:pointer}
+.btn-retry:hover{background:var(--accent2)}
+.btn-home-back{background:#fff;color:var(--ink2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 28px;font-family:var(--font-body);font-size:0.9rem;cursor:pointer}
+.btn-home-back:hover{background:var(--paper2)}
+.section-label{font-size:0.72rem;color:var(--ink3);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:0.8rem;margin-top:1.6rem}
+
+/* SETTINGS */
+.settings-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.4rem;margin-bottom:1.5rem}
+.settings-card h3{font-family:var(--font-display);font-size:0.95rem;color:var(--ink);margin-bottom:1rem}
+.settings-row{display:flex;gap:1rem;align-items:flex-end;flex-wrap:wrap}
+.settings-row .form-group{flex:1;min-width:160px;margin-bottom:0}
+.settings-row .form-group label{display:block;font-size:0.75rem;color:var(--ink3);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:5px}
+.settings-row .form-group input{width:100%;border:1px solid var(--border);border-radius:var(--radius);padding:9px 12px;font-size:0.9rem;font-family:var(--font-body);color:var(--ink);outline:none;background:#fff;transition:border 0.2s}
+.settings-row .form-group input:focus{border-color:var(--accent2)}
+.settings-hint{font-size:0.75rem;color:var(--accent);margin-top:0.5rem;min-height:1.2em}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="screen-loading" class="screen">
+  <div class="loading-inner">
+    <span class="loading-symbol">∑</span>
+    <p class="loading-text" id="loading-text">ΦΟΡΤΩΣΗ ΔΕΔΟΜΕΝΩΝ...</p>
+    <p class="loading-error hidden" id="loading-error"></p>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<div id="screen-login" class="screen hidden">
+  <div class="login-box">
+    <div class="login-logo">
+      <span class="greek-letter">∑</span>
+      <span class="subtitle">Μαθηματικά · Γ΄ Λυκείου</span>
+    </div>
+    <p class="login-title">Κατεύθυνσης</p>
+    <p class="login-sub">Εισάγετε το όνομά σας και τον κωδικό</p>
+    <div class="field">
+      <label>Ονοματεπώνυμο</label>
+      <input type="text" id="login-name" placeholder="π.χ. Γιώργος Παπαδόπουλος" autocomplete="name">
+    </div>
+    <div class="field">
+      <label>Κωδικός Πρόσβασης</label>
+      <input type="password" id="login-pass" placeholder="••••••••" autocomplete="off">
+    </div>
+    <button class="btn-primary" onclick="doLogin()">Είσοδος →</button>
+    <p class="login-error" id="login-error"></p>
+    <div class="admin-link"><a href="#" onclick="showAdminLogin()">Διαχειριστής</a></div>
+  </div>
+</div>
+
+<!-- ADMIN LOGIN MODAL -->
+<div id="modal-admin-login" class="modal-overlay hidden">
+  <div class="modal" style="max-width:360px">
+    <h2>Είσοδος Διαχειριστή</h2>
+    <div class="form-group">
+      <label>Κωδικός Admin</label>
+      <input type="password" id="admin-login-pass" placeholder="••••••••" autocomplete="off">
+    </div>
+    <p class="login-error" id="admin-login-error"></p>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('modal-admin-login')">Ακύρωση</button>
+      <button class="btn-save" onclick="doAdminLogin()">Είσοδος</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN SCREEN -->
+<div id="screen-admin" class="screen hidden">
+  <div class="admin-topbar">
+    <span class="admin-topbar-title">∑ Διαχείριση</span>
+    <div class="admin-topbar-actions">
+      <span id="sync-status-top" style="font-size:0.75rem;color:var(--ink3)"></span>
+      <button class="btn-sm danger" onclick="doLogout()">Έξοδος</button>
+    </div>
+  </div>
+  <div class="admin-body">
+    <div id="sync-bar" class="sync-bar hidden"></div>
+    <div class="admin-tabs">
+      <div class="admin-tab active" onclick="switchTab('tab-questions',this)">Ερωτήσεις</div>
+      <div class="admin-tab" onclick="switchTab('tab-results',this)">Αποτελέσματα</div>
+      <div class="admin-tab" onclick="switchTab('tab-settings',this)">Ρυθμίσεις</div>
+    </div>
+
+    <div id="tab-questions" class="tab-panel active">
+      <div class="section-header">
+        <span class="section-title">Ερωτήσεις <span id="q-count-badge" style="font-size:0.8rem;font-weight:400;color:var(--ink3)"></span></span>
+        <button class="btn-add" onclick="openAddModal()">+ Νέα Ερώτηση</button>
+      </div>
+      <div id="q-list" class="q-list"></div>
+    </div>
+
+    <div id="tab-results" class="tab-panel">
+      <div class="results-filters">
+        <input type="text" id="filter-name" placeholder="Αναζήτηση ονόματος..." oninput="renderResultsTable()" style="width:220px">
+        <button class="clear-results-btn" onclick="clearAllResults()">🗑 Διαγραφή όλων</button>
+      </div>
+      <div class="table-wrap">
+        <table class="results-table">
+          <thead><tr><th>#</th><th>Όνομα</th><th>Σκορ</th><th>Σωστές</th><th>Λάθος</th><th>Ημερομηνία</th></tr></thead>
+          <tbody id="results-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="tab-settings" class="tab-panel">
+      <div class="settings-card">
+        <h3>Κωδικοί Πρόσβασης</h3>
+        <div class="settings-row">
+          <div class="form-group">
+            <label>Κωδικός Μαθητών</label>
+            <input type="text" id="student-pass-input">
+          </div>
+          <div class="form-group">
+            <label>Νέος Κωδικός Admin</label>
+            <input type="password" id="admin-pass-input" placeholder="Αφήστε κενό για να μη αλλάξει">
+          </div>
+          <button class="btn-add" onclick="saveSettings()">Αποθήκευση</button>
+        </div>
+        <p class="settings-hint" id="settings-msg"></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- HOME -->
+<div id="screen-home" class="screen hidden">
+  <div class="home-inner">
+    <span class="home-badge">Εξάσκηση</span>
+    <h1 class="home-title">Μαθηματικά<br>Κατεύθυνσης Γ΄ Λυκείου</h1>
+    <p class="home-greeting" id="home-greeting"></p>
+    <p class="home-sub" id="home-sub-text"></p>
+    <div class="stats-row">
+      <div class="stat-box"><span class="val" id="home-total">0</span><span class="lbl">Ερωτήσεις</span></div>
+      <div class="stat-box"><span class="val" id="home-sessions">0</span><span class="lbl">Δοκιμές σου</span></div>
+    </div>
+    <button class="btn-start" onclick="startQuiz()">Έναρξη Quiz →</button>
+    <div class="home-logout"><a href="#" onclick="doLogout()">Αποσύνδεση</a></div>
+  </div>
+</div>
+
+<!-- QUIZ -->
+<div id="screen-quiz" class="screen hidden">
+  <div class="quiz-topbar">
+    <span class="quiz-progress-label">Ερώτηση <span id="qprog-cur">1</span> από <span id="qprog-tot">20</span></span>
+    <div class="quiz-prog-bar"><div class="quiz-prog-fill" id="quiz-prog-fill" style="width:5%"></div></div>
+    <button class="btn-sm" onclick="confirmExit()">✕ Έξοδος</button>
+  </div>
+  <div class="quiz-body">
+    <div class="dot-row" id="dot-row"></div>
+    <div class="q-header">
+      <span class="q-counter" id="quiz-q-num">1.</span>
+      <p class="q-statement" id="quiz-q-text"></p>
+    </div>
+    <div class="answer-btns">
+      <button class="ans-btn" id="btn-true" onclick="selectAnswer(true)"><span class="badge">Σ</span> Σωστό</button>
+      <button class="ans-btn" id="btn-false" onclick="selectAnswer(false)"><span class="badge">Λ</span> Λάθος</button>
+    </div>
+    <div class="quiz-nav">
+      <button class="btn-nav btn-prev" id="btn-prev" onclick="prevQ()" style="display:none">← Πίσω</button>
+      <button class="btn-nav btn-next" id="btn-next" onclick="nextQ()">Επόμενο →</button>
+    </div>
+  </div>
+</div>
+
+<!-- RESULTS -->
+<div id="screen-results" class="screen hidden">
+  <div class="results-header">
+    <p class="results-name" id="results-name-display"></p>
+    <p class="results-sub">Αποτελέσματα Quiz</p>
+    <h1 class="results-title">Ολοκλήρωσες!</h1>
+    <div class="score-circle"><span class="num" id="res-correct">0</span><span class="tot" id="res-tot">/20</span></div>
+  </div>
+  <div class="results-body">
+    <div class="results-grid">
+      <div class="res-stat correct"><span class="val" id="res-c">0</span><span class="lbl">Σωστές</span></div>
+      <div class="res-stat wrong"><span class="val" id="res-w">0</span><span class="lbl">Λάθος</span></div>
+      <div class="res-stat pct"><span class="val" id="res-pct">0%</span><span class="lbl">Ποσοστό</span></div>
+    </div>
+    <p class="section-label">Αναλυτικά αποτελέσματα</p>
+    <div class="review-list" id="review-list"></div>
+    <div class="results-actions">
+      <button class="btn-home-back" onclick="goHome()">← Αρχική</button>
+      <button class="btn-retry" onclick="startQuiz()">Νέο Quiz →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD/EDIT MODAL -->
+<div id="modal-question" class="modal-overlay hidden">
+  <div class="modal">
+    <h2 id="modal-q-title">Νέα Ερώτηση</h2>
+    <div class="form-group">
+      <label>Κείμενο Ερώτησης</label>
+      <textarea id="q-text-input" placeholder="π.χ. Η συνάρτηση f(x)=x² είναι άρτια."></textarea>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Σωστή Απάντηση</label>
+        <div class="radio-group">
+          <label><input type="radio" name="q-answer" value="true"> Σωστό</label>
+          <label><input type="radio" name="q-answer" value="false"> Λάθος</label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Σελίδα Βιβλίου</label>
+        <input type="text" id="q-page-input" placeholder="π.χ. σελ. 45">
+      </div>
+    </div>
+    <input type="hidden" id="q-edit-id" value="">
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('modal-question')">Ακύρωση</button>
+      <button class="btn-save" id="btn-save-q" onclick="saveQuestion()">Αποθήκευση</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== JSONBIN CONFIG ====================
+const BIN_ID = '6a270c97da38895dfe9b88fb';
+const API_KEY = '$2a$10$oytUBvF28qO2z.Lm2pAnoeqWefaIVMYZf39qhnNhqpb5yNgHQxLNy';
+const BIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+// ========================================================
+
+let remoteData = {
+  questions: [],
+  results: [],
+  student_pass: 'math2024',
+  admin_pass: 'admin123'
+};
+let currentStudent = '';
+let currentSession = {qs:[], answers:[], cur:0};
+let isSaving = false;
+
+// ── JSONBin helpers ──
+async function loadFromCloud() {
+  const res = await fetch(BIN_URL + '/latest', {
+    headers: { 'X-Master-Key': API_KEY }
+  });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const json = await res.json();
+  return json.record;
+}
+
+async function saveToCloud(data) {
+  const res = await fetch(BIN_URL, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'X-Master-Key': API_KEY },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return res.json();
+}
+
+// ── UI helpers ──
+function show(id) {
+  ['screen-loading','screen-login','screen-admin','screen-home','screen-quiz','screen-results']
+    .forEach(s => document.getElementById(s).classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+}
+function openModal(id){document.getElementById(id).classList.remove('hidden')}
+function closeModal(id){document.getElementById(id).classList.add('hidden')}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+function showSyncBar(msg, type='saving') {
+  const bar = document.getElementById('sync-bar');
+  bar.textContent = msg;
+  bar.className = 'sync-bar ' + type;
+  bar.classList.remove('hidden');
+  if (type !== 'saving') setTimeout(() => bar.classList.add('hidden'), 3000);
+}
+
+// ── INIT ──
+window.onload = async () => {
+  try {
+    document.getElementById('loading-text').textContent = 'ΦΟΡΤΩΣΗ ΔΕΔΟΜΕΝΩΝ...';
+    remoteData = await loadFromCloud();
+    if (!remoteData.questions) remoteData.questions = [];
+    if (!remoteData.results) remoteData.results = [];
+    if (!remoteData.student_pass) remoteData.student_pass = 'math2024';
+    if (!remoteData.admin_pass) remoteData.admin_pass = 'admin123';
+    show('screen-login');
+  } catch(e) {
+    document.getElementById('loading-text').textContent = 'ΣΦΑΛΜΑ ΣΥΝΔΕΣΗΣ';
+    const err = document.getElementById('loading-error');
+    err.textContent = 'Δεν ήταν δυνατή η σύνδεση με τον server. Ελέγξτε τη σύνδεσή σας και ανανεώστε τη σελίδα.';
+    err.classList.remove('hidden');
+  }
+};
+
+// ── LOGIN ──
+function doLogin() {
+  const name = document.getElementById('login-name').value.trim();
+  const pass = document.getElementById('login-pass').value.trim();
+  if (!name) { document.getElementById('login-error').textContent = 'Εισάγετε το όνομά σας.'; return; }
+  if (pass === remoteData.student_pass) {
+    currentStudent = name;
+    document.getElementById('login-error').textContent = '';
+    showHome();
+  } else {
+    document.getElementById('login-error').textContent = 'Λανθασμένος κωδικός. Δοκιμάστε ξανά.';
+  }
+}
+document.getElementById('login-pass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+document.getElementById('login-name').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('login-pass').focus(); });
+
+function showAdminLogin() { openModal('modal-admin-login'); setTimeout(()=>document.getElementById('admin-login-pass').focus(),50); }
+function doAdminLogin() {
+  const v = document.getElementById('admin-login-pass').value.trim();
+  if (v === remoteData.admin_pass) {
+    closeModal('modal-admin-login');
+    document.getElementById('admin-login-pass').value = '';
+    document.getElementById('admin-login-error').textContent = '';
+    showAdmin();
+  } else {
+    document.getElementById('admin-login-error').textContent = 'Λανθασμένος κωδικός admin.';
+  }
+}
+document.getElementById('admin-login-pass').addEventListener('keydown', e => { if(e.key==='Enter') doAdminLogin(); });
+function doLogout() { document.getElementById('login-pass').value=''; document.getElementById('login-name').value=''; currentStudent=''; show('screen-login'); }
+
+// ── ADMIN ──
+function switchTab(tabId, el) {
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.admin-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+  el.classList.add('active');
+  if (tabId==='tab-results') renderResultsTable();
+  if (tabId==='tab-settings') document.getElementById('student-pass-input').value = remoteData.student_pass;
+}
+
+function showAdmin() { renderQList(); show('screen-admin'); }
+
+function renderQList() {
+  const qs = remoteData.questions;
+  document.getElementById('q-count-badge').textContent = '(' + qs.length + ')';
+  const el = document.getElementById('q-list');
+  if (!qs.length) { el.innerHTML='<div class="empty-state"><div class="big">📝</div><p>Δεν υπάρχουν ερωτήσεις ακόμα.<br>Πατήστε «Νέα Ερώτηση».</p></div>'; return; }
+  el.innerHTML = qs.map((q,i) => `
+    <div class="q-item">
+      <span class="q-num">${i+1}</span>
+      <div class="q-content">
+        <p class="q-text">${esc(q.text)}</p>
+        <div class="q-meta">
+          <span class="q-answer ${q.answer?'true':'false'}">${q.answer?'✓ Σωστό':'✗ Λάθος'}</span>
+          ${q.page?`<span class="q-page">📄 ${esc(q.page)}</span>`:''}
+        </div>
+      </div>
+      <div class="q-actions">
+        <button class="btn-icon edit" onclick="openEditModal(${i})" title="Επεξεργασία">✏</button>
+        <button class="btn-icon del" onclick="deleteQ(${i})" title="Διαγραφή">🗑</button>
+      </div>
+    </div>`).join('');
+}
+
+function openAddModal() {
+  document.getElementById('modal-q-title').textContent = 'Νέα Ερώτηση';
+  document.getElementById('q-text-input').value = '';
+  document.getElementById('q-page-input').value = '';
+  document.querySelectorAll('input[name="q-answer"]').forEach(r=>r.checked=false);
+  document.getElementById('q-edit-id').value = '';
+  openModal('modal-question');
+  setTimeout(()=>document.getElementById('q-text-input').focus(),50);
+}
+function openEditModal(i) {
+  const q = remoteData.questions[i];
+  document.getElementById('modal-q-title').textContent = 'Επεξεργασία';
+  document.getElementById('q-text-input').value = q.text;
+  document.getElementById('q-page-input').value = q.page||'';
+  document.querySelectorAll('input[name="q-answer"]').forEach(r=>r.checked=(r.value===(q.answer?'true':'false')));
+  document.getElementById('q-edit-id').value = i;
+  openModal('modal-question');
+}
+
+async function saveQuestion() {
+  const text = document.getElementById('q-text-input').value.trim();
+  const page = document.getElementById('q-page-input').value.trim();
+  const ansEl = document.querySelector('input[name="q-answer"]:checked');
+  if (!text) { alert('Εισάγετε κείμενο ερώτησης.'); return; }
+  if (!ansEl) { alert('Επιλέξτε σωστή απάντηση.'); return; }
+  const answer = ansEl.value === 'true';
+  const editId = document.getElementById('q-edit-id').value;
+  if (editId === '') remoteData.questions.push({text,answer,page});
+  else remoteData.questions[parseInt(editId)] = {text,answer,page};
+  closeModal('modal-question');
+  await cloudSave();
+  renderQList();
+}
+
+async function deleteQ(i) {
+  if (!confirm('Διαγραφή ερώτησης;')) return;
+  remoteData.questions.splice(i,1);
+  await cloudSave();
+  renderQList();
+}
+
+async function cloudSave() {
+  showSyncBar('⏳ Αποθήκευση...', 'saving');
+  document.getElementById('sync-status-top').textContent = '⏳ Αποθήκευση...';
+  try {
+    await saveToCloud(remoteData);
+    showSyncBar('✓ Αποθηκεύτηκε!', 'success');
+    document.getElementById('sync-status-top').textContent = '✓ Αποθηκεύτηκε';
+    setTimeout(()=>document.getElementById('sync-status-top').textContent='',3000);
+  } catch(e) {
+    showSyncBar('✗ Σφάλμα αποθήκευσης — δοκιμάστε ξανά.', 'error');
+    document.getElementById('sync-status-top').textContent = '✗ Σφάλμα';
+  }
+}
+
+// RESULTS TABLE
+function renderResultsTable() {
+  const filter = (document.getElementById('filter-name').value||'').toLowerCase();
+  const filtered = remoteData.results.filter(r=>r.name.toLowerCase().includes(filter));
+  const tbody = document.getElementById('results-tbody');
+  if (!filtered.length) { tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--ink3);padding:2rem;font-size:0.85rem">Δεν βρέθηκαν αποτελέσματα.</td></tr>'; return; }
+  tbody.innerHTML = filtered.slice().reverse().map((r,i) => {
+    const pct = Math.round(r.correct/r.total*100);
+    const cls = pct>=70?'high':pct>=50?'mid':'low';
+    return `<tr>
+      <td style="color:var(--ink3);font-size:0.78rem">${filtered.length-i}</td>
+      <td style="font-weight:500">${esc(r.name)}</td>
+      <td><span class="score-pill ${cls}">${r.correct}/${r.total} (${pct}%)</span></td>
+      <td style="color:var(--accent)">${r.correct}</td>
+      <td style="color:var(--red)">${r.total-r.correct}</td>
+      <td style="color:var(--ink3);font-size:0.78rem">${r.date}</td>
+    </tr>`;
+  }).join('');
+}
+
+async function clearAllResults() {
+  if (!confirm('Διαγραφή ΟΛΩΝ των αποτελεσμάτων;')) return;
+  remoteData.results = [];
+  await cloudSave();
+  renderResultsTable();
+}
+
+// SETTINGS
+async function saveSettings() {
+  const sp = document.getElementById('student-pass-input').value.trim();
+  const ap = document.getElementById('admin-pass-input').value.trim();
+  if (sp) remoteData.student_pass = sp;
+  if (ap) remoteData.admin_pass = ap;
+  await cloudSave();
+  document.getElementById('settings-msg').textContent = '✓ Αποθηκεύτηκε!';
+  setTimeout(()=>document.getElementById('settings-msg').textContent='',2500);
+}
+
+// HOME
+function showHome() {
+  const mySessions = remoteData.results.filter(r=>r.name===currentStudent).length;
+  document.getElementById('home-total').textContent = remoteData.questions.length;
+  document.getElementById('home-sessions').textContent = mySessions;
+  document.getElementById('home-greeting').textContent = 'Καλώς ήρθες, ' + currentStudent + '!';
+  const batches = Math.ceil(remoteData.questions.length/20)||0;
+  document.getElementById('home-sub-text').textContent = remoteData.questions.length + ' ερωτήσεις · ' + batches + ' ομάδες των 20';
+  show('screen-home');
+}
+
+// QUIZ
+function shuffle(arr){const a=[...arr];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+
+function startQuiz() {
+  if (!remoteData.questions.length) { alert('Δεν υπάρχουν ερωτήσεις ακόμα.'); return; }
+  const pool = shuffle(remoteData.questions).slice(0,20);
+  currentSession = {qs:pool, answers:new Array(pool.length).fill(null), cur:0};
+  renderQuizQ();
+  show('screen-quiz');
+}
+function renderQuizQ() {
+  const {qs,answers,cur} = currentSession;
+  const q = qs[cur];
+  document.getElementById('qprog-cur').textContent = cur+1;
+  document.getElementById('qprog-tot').textContent = qs.length;
+  document.getElementById('quiz-prog-fill').style.width = ((cur+1)/qs.length*100)+'%';
+  document.getElementById('quiz-q-num').textContent = (cur+1)+'.';
+  document.getElementById('quiz-q-text').textContent = q.text;
+  const ans = answers[cur];
+  document.getElementById('btn-true').className = 'ans-btn'+(ans===true?' selected':'');
+  document.getElementById('btn-false').className = 'ans-btn'+(ans===false?' selected':'');
+  document.getElementById('btn-prev').style.display = cur>0?'':'none';
+  const isLast = cur===qs.length-1;
+  const btn = document.getElementById('btn-next');
+  btn.textContent = isLast?'Υποβολή ✓':'Επόμενο →';
+  btn.disabled = ans===null;
+  renderDots();
+}
+function renderDots() {
+  const {qs,answers,cur} = currentSession;
+  document.getElementById('dot-row').innerHTML = qs.map((_,i)=>`<div class="dot${answers[i]!==null?' answered':''}${i===cur?' current':''}"></div>`).join('');
+}
+function selectAnswer(val) {
+  currentSession.answers[currentSession.cur] = val;
+  document.getElementById('btn-next').disabled = false;
+  document.getElementById('btn-true').className = 'ans-btn'+(val===true?' selected':'');
+  document.getElementById('btn-false').className = 'ans-btn'+(val===false?' selected':'');
+  renderDots();
+}
+function nextQ() {
+  if (currentSession.answers[currentSession.cur]===null) return;
+  if (currentSession.cur===currentSession.qs.length-1) { showResults(); return; }
+  currentSession.cur++; renderQuizQ();
+}
+function prevQ(){if(currentSession.cur>0){currentSession.cur--;renderQuizQ()}}
+function confirmExit(){if(confirm('Έξοδος από το quiz;')){showHome()}}
+
+// RESULTS
+async function showResults() {
+  const {qs,answers} = currentSession;
+  let correct = 0;
+  const reviewHTML = qs.map((q,i) => {
+    const userAns = answers[i];
+    const isCorrect = userAns===q.answer;
+    if (isCorrect) correct++;
+    const userLabel = userAns?'Σωστό':'Λάθος';
+    const corrLabel = q.answer?'Σωστό':'Λάθος';
+    return `<div class="review-item ${isCorrect?'correct':'wrong'}">
+      <span class="review-num">${i+1}</span>
+      <div class="review-text">
+        ${esc(q.text)}
+        <div class="your-answer ${isCorrect?'correct':'wrong'}">
+          Απάντησες: <strong>${userLabel}</strong>${!isCorrect?` · Σωστό: <strong>${corrLabel}</strong>`:''}
+        </div>
+      </div>
+      <div class="review-meta">
+        <span class="review-result">${isCorrect?'✓ Σωστό':'✗ Λάθος'}</span>
+        ${q.page?`<span class="review-page">📄 ${esc(q.page)}</span>`:''}
+      </div>
+    </div>`;
+  }).join('');
+
+  const now = new Date();
+  const date = now.toLocaleDateString('el-GR',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+now.toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit'});
+  remoteData.results.push({name:currentStudent, correct, total:qs.length, date});
+  saveToCloud(remoteData).catch(()=>{});
+
+  document.getElementById('results-name-display').textContent = currentStudent;
+  document.getElementById('res-correct').textContent = correct;
+  document.getElementById('res-tot').textContent = '/'+qs.length;
+  document.getElementById('res-c').textContent = correct;
+  document.getElementById('res-w').textContent = qs.length-correct;
+  document.getElementById('res-pct').textContent = Math.round(correct/qs.length*100)+'%';
+  document.getElementById('review-list').innerHTML = reviewHTML;
+  show('screen-results');
+}
+function goHome(){showHome()}
+</script>
+</body>
+</html>
