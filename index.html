@@ -312,7 +312,7 @@ body{font-family:var(--font-body);background:var(--paper);color:var(--ink);min-h
       </div>
       <div class="table-wrap">
         <table class="results-table">
-          <thead><tr><th>#</th><th>Όνομα</th><th>Σκορ</th><th>Σωστές</th><th>Λάθος</th><th>Ημερομηνία</th></tr></thead>
+          <thead><tr><th>#</th><th>Όνομα</th><th>Σκορ</th><th>Σωστές</th><th>Λάθος</th><th>Ημερομηνία</th><th></th></tr></thead>
           <tbody id="results-tbody"></tbody>
         </table>
       </div>
@@ -401,7 +401,23 @@ body{font-family:var(--font-body);background:var(--paper);color:var(--ink);min-h
   </div>
 </div>
 
-<!-- ADD/EDIT MODAL -->
+<!-- RESULT DETAIL SCREEN -->
+<div id="screen-detail" class="screen hidden" style="justify-content:flex-start;padding:0;background:var(--paper)">
+  <div style="background:#fff;border-bottom:1px solid var(--border);padding:0.85rem 2rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;z-index:50">
+    <button class="btn-sm" onclick="show('screen-admin');switchTab('tab-results',document.querySelectorAll('.admin-tab')[1])">← Πίσω</button>
+    <div>
+      <span id="detail-title" style="font-family:var(--font-display);font-size:1rem;color:var(--ink)"></span>
+      <span id="detail-meta" style="font-size:0.78rem;color:var(--ink3);margin-left:0.8rem"></span>
+    </div>
+  </div>
+  <div style="padding:2rem;max-width:720px;margin:0 auto;width:100%">
+    <div id="detail-stats" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1.8rem"></div>
+    <p style="font-size:0.72rem;color:var(--ink3);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:0.8rem">Αναλυτικά</p>
+    <div id="detail-body" style="display:flex;flex-direction:column;gap:0.5rem"></div>
+  </div>
+</div>
+
+
 <div id="modal-question" class="modal-overlay hidden">
   <div class="modal">
     <h2 id="modal-q-title">Νέα Ερώτηση</h2>
@@ -469,7 +485,7 @@ async function saveToCloud(data) {
 
 // ── UI helpers ──
 function show(id) {
-  ['screen-loading','screen-login','screen-admin','screen-home','screen-quiz','screen-results']
+  ['screen-loading','screen-login','screen-admin','screen-home','screen-quiz','screen-results','screen-detail']
     .forEach(s => document.getElementById(s).classList.add('hidden'));
   document.getElementById(id).classList.remove('hidden');
 }
@@ -648,19 +664,64 @@ function renderResultsTable() {
   const filter = (document.getElementById('filter-name').value||'').toLowerCase();
   const filtered = remoteData.results.filter(r=>r.name.toLowerCase().includes(filter));
   const tbody = document.getElementById('results-tbody');
-  if (!filtered.length) { tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--ink3);padding:2rem;font-size:0.85rem">Δεν βρέθηκαν αποτελέσματα.</td></tr>'; return; }
-  tbody.innerHTML = filtered.slice().reverse().map((r,i) => {
+  if (!filtered.length) { tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--ink3);padding:2rem;font-size:0.85rem">Δεν βρέθηκαν αποτελέσματα.</td></tr>'; return; }
+  // Keep original index for details lookup
+  const withIdx = remoteData.results.map((r,i)=>({...r,_idx:i})).filter(r=>r.name.toLowerCase().includes(filter));
+  tbody.innerHTML = withIdx.slice().reverse().map((r,i) => {
     const pct = Math.round(r.correct/r.total*100);
     const cls = pct>=70?'high':pct>=50?'mid':'low';
     return `<tr>
-      <td style="color:var(--ink3);font-size:0.78rem">${filtered.length-i}</td>
+      <td style="color:var(--ink3);font-size:0.78rem">${withIdx.length-i}</td>
       <td style="font-weight:500">${esc(r.name)}</td>
       <td><span class="score-pill ${cls}">${r.correct}/${r.total} (${pct}%)</span></td>
       <td style="color:var(--accent)">${r.correct}</td>
       <td style="color:var(--red)">${r.total-r.correct}</td>
       <td style="color:var(--ink3);font-size:0.78rem">${r.date}</td>
+      <td><button class="btn-sm" onclick="showResultDetails(${r._idx})" style="padding:4px 10px;font-size:0.75rem">🔍 Λεπτομέρειες</button></td>
     </tr>`;
   }).join('');
+}
+
+function showResultDetails(idx) {
+  const r = remoteData.results[idx];
+  if (!r) return;
+  const pct = Math.round(r.correct/r.total*100);
+  const wrong = r.total - r.correct;
+
+  document.getElementById('detail-title').textContent = r.name;
+  document.getElementById('detail-meta').textContent = r.date;
+
+  const cls = pct>=70?'high':pct>=50?'mid':'low';
+  const clrMap = {high:'var(--accent)',mid:'var(--gold)',low:'var(--red)'};
+  document.getElementById('detail-stats').innerHTML = `
+    <div class="res-stat correct"><span class="val">${r.correct}</span><span class="lbl">Σωστές</span></div>
+    <div class="res-stat wrong"><span class="val">${wrong}</span><span class="lbl">Λάθος</span></div>
+    <div class="res-stat pct"><span class="val" style="color:${clrMap[cls]}">${pct}%</span><span class="lbl">Ποσοστό</span></div>`;
+
+  const details = r.details || [];
+  document.getElementById('detail-body').innerHTML = details.length
+    ? details.map((d,i) => {
+        const isCorrect = d.user_answer === d.correct_answer;
+        const userLabel = d.user_answer ? 'Σωστό' : 'Λάθος';
+        const corrLabel = d.correct_answer ? 'Σωστό' : 'Λάθος';
+        return `<div class="review-item ${isCorrect?'correct':'wrong'}">
+          <span class="review-num">${i+1}</span>
+          <div class="review-text">
+            ${esc(d.text)}
+            <div class="your-answer ${isCorrect?'correct':'wrong'}">
+              Απάντησε: <strong>${userLabel}</strong>${!isCorrect?` · Σωστό: <strong>${corrLabel}</strong>`:''}
+            </div>
+          </div>
+          <div class="review-meta">
+            <span class="review-result">${isCorrect?'✓ Σωστό':'✗ Λάθος'}</span>
+            ${d.page?`<span class="review-page">📄 ${esc(d.page)}</span>`:''}
+          </div>
+        </div>`;
+      }).join('')
+    : '<p style="color:var(--ink3);font-size:0.85rem;padding:1rem 0">Δεν υπάρχουν λεπτομέρειες (παλιά εγγραφή).</p>';
+
+  show('screen-detail');
+  window.scrollTo(0,0);
 }
 
 async function clearAllResults() {
@@ -766,7 +827,8 @@ async function showResults() {
 
   const now = new Date();
   const date = now.toLocaleDateString('el-GR',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+now.toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit'});
-  remoteData.results.push({name:currentStudent, correct, total:qs.length, date});
+  const details = qs.map((q,i)=>({text:q.text, correct_answer:q.answer, user_answer:answers[i], page:q.page||''}));
+  remoteData.results.push({name:currentStudent, correct, total:qs.length, date, details});
   saveToCloud(remoteData).catch(()=>{});
 
   document.getElementById('results-name-display').textContent = currentStudent;
