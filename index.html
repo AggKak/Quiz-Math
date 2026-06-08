@@ -494,7 +494,18 @@ window.onload = async () => {
     if (!remoteData.results) remoteData.results = [];
     if (!remoteData.student_pass) remoteData.student_pass = 'math2024';
     if (!remoteData.admin_pass) remoteData.admin_pass = 'admin123';
-    show('screen-login');
+
+    // Επαναφορά session μετά από ανανέωση
+    const savedRole = sessionStorage.getItem('mq_role');
+    const savedName = sessionStorage.getItem('mq_name');
+    if (savedRole === 'admin') {
+      showAdmin();
+    } else if (savedRole === 'student' && savedName) {
+      currentStudent = savedName;
+      showHome();
+    } else {
+      show('screen-login');
+    }
   } catch(e) {
     document.getElementById('loading-text').textContent = 'ΣΦΑΛΜΑ ΣΥΝΔΕΣΗΣ';
     const err = document.getElementById('loading-error');
@@ -510,6 +521,8 @@ function doLogin() {
   if (!name) { document.getElementById('login-error').textContent = 'Εισάγετε το όνομά σας.'; return; }
   if (pass === remoteData.student_pass) {
     currentStudent = name;
+    sessionStorage.setItem('mq_role', 'student');
+    sessionStorage.setItem('mq_name', name);
     document.getElementById('login-error').textContent = '';
     showHome();
   } else {
@@ -526,13 +539,20 @@ function doAdminLogin() {
     closeModal('modal-admin-login');
     document.getElementById('admin-login-pass').value = '';
     document.getElementById('admin-login-error').textContent = '';
+    sessionStorage.setItem('mq_role', 'admin');
     showAdmin();
   } else {
     document.getElementById('admin-login-error').textContent = 'Λανθασμένος κωδικός admin.';
   }
 }
 document.getElementById('admin-login-pass').addEventListener('keydown', e => { if(e.key==='Enter') doAdminLogin(); });
-function doLogout() { document.getElementById('login-pass').value=''; document.getElementById('login-name').value=''; currentStudent=''; show('screen-login'); }
+function doLogout() {
+  sessionStorage.clear();
+  document.getElementById('login-pass').value='';
+  document.getElementById('login-name').value='';
+  currentStudent='';
+  show('screen-login');
+}
 
 // ── ADMIN ──
 function switchTab(tabId, el) {
