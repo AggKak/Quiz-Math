@@ -231,6 +231,8 @@ body{font-family:var(--font-body);background:var(--paper);color:var(--ink);min-h
 .settings-row .form-group input{width:100%;border:1px solid var(--border);border-radius:var(--radius);padding:9px 12px;font-size:0.9rem;font-family:var(--font-body);color:var(--ink);outline:none;background:#fff;transition:border 0.2s}
 .settings-row .form-group input:focus{border-color:var(--accent2)}
 .settings-hint{font-size:0.75rem;color:var(--accent);margin-top:0.5rem;min-height:1.2em}
+.katex-display{font-size:0.82rem!important;margin:0.3rem 0!important;overflow-x:auto}
+.katex{font-size:0.9em!important}
 </style>
 </head>
 <body>
@@ -305,7 +307,7 @@ body{font-family:var(--font-body);background:var(--paper);color:var(--ink);min-h
     <div id="tab-questions" class="tab-panel active">
       <div class="section-header">
         <span class="section-title">Ερωτήσεις <span id="q-count-badge" style="font-size:0.8rem;font-weight:400;color:var(--ink3)"></span></span>
-        <button class="btn-add" onclick="openAddModal()">+ Νέα Ερώτηση</button>
+        <div style="display:flex;gap:0.6rem"><button class="btn-sm danger" onclick="deleteAllQuestions()">🗑 Διαγραφή όλων</button><button class="btn-add" onclick="openAddModal()">+ Νέα Ερώτηση</button></div>
       </div>
       <div id="q-list" class="q-list"></div>
     </div>
@@ -585,6 +587,14 @@ function renderQList() {
         <button class="btn-icon del" onclick="deleteQ(${i})" title="Διαγραφή">🗑</button>
       </div>
     </div>`).join('');
+  renderMath(el);
+}
+
+async function deleteAllQuestions() {
+  if (!confirm('Διαγραφή ΟΛΩΝ των ερωτήσεων;')) return;
+  remoteData.questions = [];
+  await cloudSave();
+  renderQList();
 }
 
 function openAddModal() {
