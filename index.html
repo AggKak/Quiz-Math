@@ -6,6 +6,10 @@
 <title>Μαθηματικά Κατεύθυνσης Γ΄ Λυκείου</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"
+  onload="renderMathInPage()"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -465,7 +469,25 @@ async function saveToCloud(data) {
 }
 
 // ── UI helpers ──
-function show(id) {
+function renderMathInPage() {
+  // Καλείται μετά τη φόρτωση του KaTeX
+  window.katexReady = true;
+}
+
+function renderMath(el) {
+  if (!window.katexReady || typeof renderMathInElement === 'undefined') {
+    setTimeout(() => renderMath(el), 100);
+    return;
+  }
+  renderMathInElement(el, {
+    delimiters: [
+      {left:'$$', right:'$$', display:true},
+      {left:'$', right:'$', display:false}
+    ],
+    throwOnError: false
+  });
+}
+
   ['screen-loading','screen-login','screen-admin','screen-home','screen-quiz','screen-results','screen-detail']
     .forEach(s => document.getElementById(s).classList.add('hidden'));
   document.getElementById(id).classList.remove('hidden');
@@ -738,6 +760,7 @@ function renderQuizQ() {
   document.getElementById('quiz-prog-fill').style.width = ((cur+1)/qs.length*100)+'%';
   document.getElementById('quiz-q-num').textContent = (cur+1)+'.';
   document.getElementById('quiz-q-text').textContent = q.text;
+  renderMath(document.getElementById('quiz-q-text'));
   const ans = answers[cur];
   document.getElementById('btn-true').className = 'ans-btn'+(ans===true?' selected':'');
   document.getElementById('btn-false').className = 'ans-btn'+(ans===false?' selected':'');
@@ -818,6 +841,7 @@ async function showResults() {
     </div>` + reviewHTML;
   }
   document.getElementById('review-list').innerHTML = finalHTML;
+  renderMath(document.getElementById('review-list'));
   show('screen-results');
 }
 function backToResults() {
@@ -882,7 +906,7 @@ function showResultDetails(studentName) {
 
   show('screen-detail');
   window.scrollTo(0,0);
-}
+  renderMath(document.getElementById('detail-body'));
 function exportQuestions() {
   const blob = new Blob([JSON.stringify({questions: remoteData.questions, version:1}, null, 2)], {type:'application/json'});
   const a = document.createElement('a');
