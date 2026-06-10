@@ -527,8 +527,13 @@ window.onload = async () => {
   } catch(e) {
     document.getElementById('loading-text').textContent = 'ΣΦΑΛΜΑ ΣΥΝΔΕΣΗΣ';
     const err = document.getElementById('loading-error');
-    err.textContent = 'Δεν ήταν δυνατή η σύνδεση με τον server. Ελέγξτε τη σύνδεσή σας και ανανεώστε τη σελίδα.';
+    err.textContent = 'Σφάλμα: ' + e.message + ' — Ανανεώστε τη σελίδα ή ελέγξτε τη σύνδεση.';
     err.classList.remove('hidden');
+    // Fallback: εμφάνισε login με κενά δεδομένα
+    setTimeout(() => {
+      remoteData = { questions:[], results:[], student_pass:'math2024', admin_pass:'admin123' };
+      show('screen-login');
+    }, 4000);
   }
 };
 
