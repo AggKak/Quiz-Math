@@ -403,23 +403,7 @@ body{font-family:var(--font-body);background:var(--paper);color:var(--ink);min-h
   </div>
 </div>
 
-<!-- RESULT DETAIL SCREEN -->
-<div id="screen-detail" class="screen hidden" style="justify-content:flex-start;padding:0;background:var(--paper)">
-  <div style="background:#fff;border-bottom:1px solid var(--border);padding:0.85rem 2rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;z-index:50">
-    <button class="btn-sm" onclick="show('screen-admin');switchTab('tab-results',document.querySelectorAll('.admin-tab')[1])">← Πίσω</button>
-    <div>
-      <span id="detail-title" style="font-family:var(--font-display);font-size:1rem;color:var(--ink)"></span>
-      <span id="detail-meta" style="font-size:0.78rem;color:var(--ink3);margin-left:0.8rem"></span>
-    </div>
-  </div>
-  <div style="padding:2rem;max-width:720px;margin:0 auto;width:100%">
-    <div id="detail-stats" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1.8rem"></div>
-    <p style="font-size:0.72rem;color:var(--ink3);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:0.8rem">Αναλυτικά</p>
-    <div id="detail-body" style="display:flex;flex-direction:column;gap:0.5rem"></div>
-  </div>
-</div>
-
-
+<!-- ADD/EDIT MODAL -->
 <div id="modal-question" class="modal-overlay hidden">
   <div class="modal">
     <h2 id="modal-q-title">Νέα Ερώτηση</h2>
@@ -451,7 +435,7 @@ body{font-family:var(--font-body);background:var(--paper);color:var(--ink);min-h
 <script>
 // ==================== JSONBIN CONFIG ====================
 const BIN_ID = '6a270c97da38895dfe9b88fb';
-const API_KEY = '$2a$10$oytUBvF28qO2z.Lm2pAnoeqWefaIVMYZf39qhnNhqpb5yNgHQxLNy';
+const API_KEY = '$2a$10$vmlVkhDKPF2uMfiQgiGP9OgmXrSOkjcLD3h9z9RA2bvYp02I/C8XS';
 const BIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
 // ========================================================
 
@@ -512,7 +496,6 @@ window.onload = async () => {
     if (!remoteData.results) remoteData.results = [];
     if (!remoteData.student_pass) remoteData.student_pass = 'math2024';
     if (!remoteData.admin_pass) remoteData.admin_pass = 'admin123';
-
     // Επαναφορά session μετά από ανανέωση
     const savedRole = sessionStorage.getItem('mq_role');
     const savedName = sessionStorage.getItem('mq_name');
@@ -527,13 +510,8 @@ window.onload = async () => {
   } catch(e) {
     document.getElementById('loading-text').textContent = 'ΣΦΑΛΜΑ ΣΥΝΔΕΣΗΣ';
     const err = document.getElementById('loading-error');
-    err.textContent = 'Σφάλμα: ' + e.message + ' — Ανανεώστε τη σελίδα ή ελέγξτε τη σύνδεση.';
+    err.textContent = 'Δεν ήταν δυνατή η σύνδεση με τον server. Ελέγξτε τη σύνδεσή σας και ανανεώστε τη σελίδα.';
     err.classList.remove('hidden');
-    // Fallback: εμφάνισε login με κενά δεδομένα
-    setTimeout(() => {
-      remoteData = { questions:[], results:[], student_pass:'math2024', admin_pass:'admin123' };
-      show('screen-login');
-    }, 4000);
   }
 };
 
@@ -669,11 +647,9 @@ async function cloudSave() {
 // RESULTS TABLE
 function renderResultsTable() {
   const filter = (document.getElementById('filter-name').value||'').toLowerCase();
-  const filtered = remoteData.results.filter(r=>r.name.toLowerCase().includes(filter));
-  const tbody = document.getElementById('results-tbody');
-  if (!filtered.length) { tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--ink3);padding:2rem;font-size:0.85rem">Δεν βρέθηκαν αποτελέσματα.</td></tr>'; return; }
-  // Keep original index for details lookup
   const withIdx = remoteData.results.map((r,i)=>({...r,_idx:i})).filter(r=>r.name.toLowerCase().includes(filter));
+  const tbody = document.getElementById('results-tbody');
+  if (!withIdx.length) { tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--ink3);padding:2rem;font-size:0.85rem">Δεν βρέθηκαν αποτελέσματα.</td></tr>'; return; }
   tbody.innerHTML = withIdx.slice().reverse().map((r,i) => {
     const pct = Math.round(r.correct/r.total*100);
     const cls = pct>=70?'high':pct>=50?'mid':'low';
@@ -687,48 +663,6 @@ function renderResultsTable() {
       <td><button class="btn-sm" onclick="showResultDetails(${r._idx})" style="padding:4px 10px;font-size:0.75rem">🔍 Λεπτομέρειες</button></td>
     </tr>`;
   }).join('');
-}
-
-function showResultDetails(idx) {
-  const r = remoteData.results[idx];
-  if (!r) return;
-  const pct = Math.round(r.correct/r.total*100);
-  const wrong = r.total - r.correct;
-
-  document.getElementById('detail-title').textContent = r.name;
-  document.getElementById('detail-meta').textContent = r.date;
-
-  const cls = pct>=70?'high':pct>=50?'mid':'low';
-  const clrMap = {high:'var(--accent)',mid:'var(--gold)',low:'var(--red)'};
-  document.getElementById('detail-stats').innerHTML = `
-    <div class="res-stat correct"><span class="val">${r.correct}</span><span class="lbl">Σωστές</span></div>
-    <div class="res-stat wrong"><span class="val">${wrong}</span><span class="lbl">Λάθος</span></div>
-    <div class="res-stat pct"><span class="val" style="color:${clrMap[cls]}">${pct}%</span><span class="lbl">Ποσοστό</span></div>`;
-
-  const details = r.details || [];
-  document.getElementById('detail-body').innerHTML = details.length
-    ? details.map((d,i) => {
-        const isCorrect = d.user_answer === d.correct_answer;
-        const userLabel = d.user_answer ? 'Σωστό' : 'Λάθος';
-        const corrLabel = d.correct_answer ? 'Σωστό' : 'Λάθος';
-        return `<div class="review-item ${isCorrect?'correct':'wrong'}">
-          <span class="review-num">${i+1}</span>
-          <div class="review-text">
-            ${esc(d.text)}
-            <div class="your-answer ${isCorrect?'correct':'wrong'}">
-              Απάντησε: <strong>${userLabel}</strong>${!isCorrect?` · Σωστό: <strong>${corrLabel}</strong>`:''}
-            </div>
-          </div>
-          <div class="review-meta">
-            <span class="review-result">${isCorrect?'✓ Σωστό':'✗ Λάθος'}</span>
-            ${d.page?`<span class="review-page">📄 ${esc(d.page)}</span>`:''}
-          </div>
-        </div>`;
-      }).join('')
-    : '<p style="color:var(--ink3);font-size:0.85rem;padding:1rem 0">Δεν υπάρχουν λεπτομέρειες (παλιά εγγραφή).</p>';
-
-  show('screen-detail');
-  window.scrollTo(0,0);
 }
 
 async function clearAllResults() {
@@ -761,17 +695,7 @@ function showHome() {
 }
 
 // QUIZ
-function shuffle(arr) {
-  const a = [...arr];
-  // Χρησιμοποιεί crypto για πραγματικά τυχαία σειρά
-  const rand = new Uint32Array(a.length);
-  crypto.getRandomValues(rand);
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = rand[i] % (i + 1);
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
+function shuffle(arr){const a=[...arr];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 
 function startQuiz() {
   if (!remoteData.questions.length) { alert('Δεν υπάρχουν ερωτήσεις ακόμα.'); return; }
@@ -862,7 +786,10 @@ function goHome(){showHome()}
 // ── JSON EXPORT / IMPORT ──
 function exportQuestions() {
   const blob = new Blob([JSON.stringify({questions: remoteData.questions, version:1}, null, 2)], {type:'application/json'});
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'math_questions.json'; a.click();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'math_questions.json';
+  a.click();
 }
 
 async function importQuestions(e) {
@@ -876,6 +803,7 @@ async function importQuestions(e) {
           remoteData.questions = [...remoteData.questions, ...data.questions];
           await cloudSave();
           renderQList();
+          alert('✓ Προστέθηκαν ' + data.questions.length + ' ερωτήσεις!');
         }
       } else alert('Μη έγκυρο αρχείο JSON.');
     } catch { alert('Σφάλμα ανάγνωσης αρχείου.'); }
@@ -884,5 +812,61 @@ async function importQuestions(e) {
   e.target.value = '';
 }
 
-</body>
-</html>
+function showResultDetails(idx) {
+  const r = remoteData.results[idx];
+  if (!r) return;
+  const pct = Math.round(r.correct/r.total*100);
+  const wrong = r.total - r.correct;
+  const clrMap = {high:'var(--accent)',mid:'var(--gold)',low:'var(--red)'};
+  const cls = pct>=70?'high':pct>=50?'mid':'low';
+
+  document.getElementById('detail-title').textContent = r.name;
+  document.getElementById('detail-meta').textContent = r.date;
+  document.getElementById('detail-stats').innerHTML = `
+    <div class="res-stat correct"><span class="val">${r.correct}</span><span class="lbl">Σωστές</span></div>
+    <div class="res-stat wrong"><span class="val">${wrong}</span><span class="lbl">Λάθος</span></div>
+    <div class="res-stat pct"><span class="val" style="color:${clrMap[cls]}">${pct}%</span><span class="lbl">Ποσοστό</span></div>`;
+
+  const details = r.details || [];
+  document.getElementById('detail-body').innerHTML = details.length
+    ? details.map((d,i) => {
+        const isCorrect = d.user_answer === d.correct_answer;
+        const userLabel = d.user_answer ? 'Σωστό' : 'Λάθος';
+        const corrLabel = d.correct_answer ? 'Σωστό' : 'Λάθος';
+        return `<div class="review-item ${isCorrect?'correct':'wrong'}">
+          <span class="review-num">${i+1}</span>
+          <div class="review-text">
+            ${esc(d.text)}
+            <div class="your-answer ${isCorrect?'correct':'wrong'}">
+              Απάντησε: <strong>${userLabel}</strong>${!isCorrect?` · Σωστό: <strong>${corrLabel}</strong>`:''}
+            </div>
+          </div>
+          <div class="review-meta">
+            <span class="review-result">${isCorrect?'✓ Σωστό':'✗ Λάθος'}</span>
+            ${d.page?`<span class="review-page">📄 ${esc(d.page)}</span>`:''}
+          </div>
+        </div>`;
+      }).join('')
+    : '<p style="color:var(--ink3);font-size:0.85rem;padding:1rem 0">Δεν υπάρχουν λεπτομέρειες (παλιά εγγραφή).</p>';
+
+  show('screen-detail');
+  window.scrollTo(0,0);
+}
+</script>
+<!-- DETAIL SCREEN -->
+<div id="screen-detail" class="screen hidden" style="justify-content:flex-start;padding:0;background:var(--paper)">
+  <div style="background:#fff;border-bottom:1px solid var(--border);padding:0.85rem 2rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;z-index:50">
+    <button class="btn-sm" onclick="show('screen-admin');switchTab('tab-results',document.querySelectorAll('.admin-tab')[1])">← Πίσω</button>
+    <div>
+      <span id="detail-title" style="font-family:var(--font-display);font-size:1rem;color:var(--ink)"></span>
+      <span id="detail-meta" style="font-size:0.78rem;color:var(--ink3);margin-left:0.8rem"></span>
+    </div>
+  </div>
+  <div style="padding:2rem;max-width:720px;margin:0 auto;width:100%">
+    <div id="detail-stats" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1.8rem"></div>
+    <p style="font-size:0.72rem;color:var(--ink3);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:0.8rem">Αναλυτικά</p>
+    <div id="detail-body" style="display:flex;flex-direction:column;gap:0.5rem"></div>
+  </div>
+</div>
+
+
