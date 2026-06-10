@@ -293,6 +293,7 @@ body{font-family:var(--font-body);background:var(--paper);color:var(--ink);min-h
     <div id="sync-bar" class="sync-bar hidden"></div>
     <div class="admin-tabs">
       <div class="admin-tab active" onclick="switchTab('tab-questions',this)">Ερωτήσεις</div>
+      <div class="admin-tab" onclick="switchTab('tab-import',this)">📥 Μαζική Εισαγωγή</div>
       <div class="admin-tab" onclick="switchTab('tab-results',this)">Αποτελέσματα</div>
       <div class="admin-tab" onclick="switchTab('tab-settings',this)">Ρυθμίσεις</div>
     </div>
@@ -303,6 +304,35 @@ body{font-family:var(--font-body);background:var(--paper);color:var(--ink);min-h
         <button class="btn-add" onclick="openAddModal()">+ Νέα Ερώτηση</button>
       </div>
       <div id="q-list" class="q-list"></div>
+    </div>
+
+    <!-- AI IMPORT TAB -->
+    <div id="tab-import" class="tab-panel">
+      <div class="settings-card" style="margin-bottom:1.2rem">
+        <h3>📥 Μαζική Εισαγωγή από Κείμενο (AI)</h3>
+        <p style="font-size:0.83rem;color:var(--ink3);margin-bottom:1rem;line-height:1.6">
+          Αντιγράψτε και επικολλάστε ερωτήσεις από Word, PDF ή οποιοδήποτε κείμενο. Το AI θα αναγνωρίσει αυτόματα τις ερωτήσεις, τις απαντήσεις και τις σελίδες.
+        </p>
+        <div class="form-group">
+          <label>Επικολλήστε το κείμενο εδώ</label>
+          <textarea id="ai-import-text" style="min-height:200px;font-size:0.85rem" placeholder="π.χ.&#10;1. Η παράγωγος του x² είναι 2x. (Σωστό) σελ.45&#10;2. Η συνάρτηση f(x)=x³ είναι άρτια. (Λάθος) σελ.23&#10;&#10;ή οποιαδήποτε μορφή κειμένου από Word/PDF..."></textarea>
+        </div>
+        <button class="btn-add" id="btn-ai-import" onclick="runAIImport()">✨ Ανάλυση με AI</button>
+        <p id="ai-import-status" style="font-size:0.8rem;margin-top:0.6rem;min-height:1.2em"></p>
+      </div>
+
+      <!-- PREVIEW -->
+      <div id="ai-preview-section" class="hidden">
+        <div class="section-header">
+          <span class="section-title">Preview <span id="ai-preview-count" style="font-size:0.8rem;font-weight:400;color:var(--ink3)"></span></span>
+          <div style="display:flex;gap:0.6rem">
+            <button class="btn-sm" onclick="clearAIPreview()">✕ Ακύρωση</button>
+            <button class="btn-add" id="btn-confirm-import" onclick="confirmAIImport()">✓ Προσθήκη όλων</button>
+          </div>
+        </div>
+        <p style="font-size:0.8rem;color:var(--ink3);margin-bottom:1rem">Ελέγξτε τις ερωτήσεις πριν τις αποθηκεύσετε. Μπορείτε να διαγράψετε όσες δεν θέλετε.</p>
+        <div id="ai-preview-list" class="q-list"></div>
+      </div>
     </div>
 
     <div id="tab-results" class="tab-panel">
@@ -850,7 +880,116 @@ async function showResults() {
   document.getElementById('review-list').innerHTML = reviewHTML;
   show('screen-results');
 }
-function goHome(){showHome()}
-</script>
+// ── AI IMPORT ──
+let aiPreviewQuestions = [];
+
+async function runAIImport() {
+  const text = document.getElementById('ai-import-text').value.trim();
+  if (!text) { alert('Επικολλάστε κείμενο πρώτα.'); return; }
+
+  const btn = document.getElementById('btn-ai-import');
+  const status = document.getElementById('ai-import-status');
+  btn.disabled = true;
+  btn.textContent = '⏳ Ανάλυση...';
+  status.style.color = 'var(--ink3)';
+  status.textContent = 'Το AI αναλύει το κείμενο...';
+  document.getElementById('ai-preview-section').classList.add('hidden');
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 4000,
+        system: `Είσαι βοηθός που εξάγει ερωτήσεις σωστού/λάθους από κείμενο. 
+Επέστρεψε ΜΟΝΟ έγκυρο JSON, χωρίς markdown, χωρίς backticks, χωρίς επεξήγηση.
+Μορφή: {"questions":[{"text":"...","answer":true/false,"page":"..."}]}
+Κανόνες:
+- text: το κείμενο της ερώτησης χωρίς αρίθμηση
+- answer: true αν η πρόταση είναι σωστή, false αν είναι λάθος
+- page: η σελίδα αν αναφέρεται, αλλιώς ""
+- Αν δεν είναι ξεκάθαρο αν είναι σωστό/λάθος, παράλειψέ το`,
+        messages: [{ role: 'user', content: `Εξήγαγε τις ερωτήσεις σωστού/λάθους από αυτό το κείμενο:\n\n${text}` }]
+      })
+    });
+
+    const data = await response.json();
+    const raw = data.content.map(c => c.text || '').join('');
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+
+    if (!parsed.questions || !parsed.questions.length) {
+      throw new Error('Δεν βρέθηκαν ερωτήσεις');
+    }
+
+    aiPreviewQuestions = parsed.questions;
+    renderAIPreview();
+    status.style.color = 'var(--accent)';
+    status.textContent = `✓ Βρέθηκαν ${aiPreviewQuestions.length} ερωτήσεις. Ελέγξτε το preview παρακάτω.`;
+
+  } catch(e) {
+    status.style.color = 'var(--red)';
+    status.textContent = '✗ Σφάλμα: ' + (e.message || 'Δοκιμάστε ξανά.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '✨ Ανάλυση με AI';
+  }
+}
+
+function renderAIPreview() {
+  document.getElementById('ai-preview-section').classList.remove('hidden');
+  document.getElementById('ai-preview-count').textContent = '(' + aiPreviewQuestions.length + ' ερωτήσεις)';
+  const list = document.getElementById('ai-preview-list');
+  list.innerHTML = aiPreviewQuestions.map((q, i) => `
+    <div class="q-item" id="ai-q-${i}">
+      <span class="q-num">${i+1}</span>
+      <div class="q-content">
+        <p class="q-text">${esc(q.text)}</p>
+        <div class="q-meta">
+          <span class="q-answer ${q.answer?'true':'false'}">${q.answer?'✓ Σωστό':'✗ Λάθος'}</span>
+          ${q.page?`<span class="q-page">📄 ${esc(q.page)}</span>`:''}
+        </div>
+      </div>
+      <div class="q-actions">
+        <button class="btn-icon del" onclick="removeAIPreviewQ(${i})" title="Αφαίρεση">🗑</button>
+      </div>
+    </div>`).join('');
+}
+
+function removeAIPreviewQ(i) {
+  aiPreviewQuestions.splice(i, 1);
+  if (!aiPreviewQuestions.length) {
+    clearAIPreview();
+    return;
+  }
+  renderAIPreview();
+}
+
+function clearAIPreview() {
+  aiPreviewQuestions = [];
+  document.getElementById('ai-preview-section').classList.add('hidden');
+  document.getElementById('ai-import-status').textContent = '';
+}
+
+async function confirmAIImport() {
+  if (!aiPreviewQuestions.length) return;
+  const btn = document.getElementById('btn-confirm-import');
+  btn.disabled = true;
+  btn.textContent = '⏳ Αποθήκευση...';
+  remoteData.questions = [...remoteData.questions, ...aiPreviewQuestions];
+  await cloudSave();
+  const count = aiPreviewQuestions.length;
+  clearAIPreview();
+  document.getElementById('ai-import-text').value = '';
+  document.getElementById('ai-import-status').style.color = 'var(--accent)';
+  document.getElementById('ai-import-status').textContent = `✓ Προστέθηκαν ${count} ερωτήσεις!`;
+  // Switch to questions tab
+  switchTab('tab-questions', document.querySelectorAll('.admin-tab')[0]);
+  renderQList();
+  btn.disabled = false;
+  btn.textContent = '✓ Προσθήκη όλων';
+}
+
 </body>
 </html>
