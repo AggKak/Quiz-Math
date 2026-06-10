@@ -309,15 +309,10 @@ body{font-family:var(--font-body);background:var(--paper);color:var(--ink);min-h
 
     <div id="tab-results" class="tab-panel">
       <div class="results-filters">
-        <input type="text" id="filter-name" placeholder="Αναζήτηση ονόματος..." oninput="renderResultsTable()" style="width:220px">
+        <input type="text" id="filter-name" placeholder="Αναζήτηση ονόματος..." oninput="renderResultsTable()" style="width:200px">
         <button class="clear-results-btn" onclick="clearAllResults()">🗑 Διαγραφή όλων</button>
       </div>
-      <div class="table-wrap">
-        <table class="results-table">
-          <thead><tr><th>#</th><th>Όνομα</th><th>Σκορ</th><th>Σωστές</th><th>Λάθος</th><th>Ημερομηνία</th><th></th></tr></thead>
-          <tbody id="results-tbody"></tbody>
-        </table>
-      </div>
+      <div id="results-cards"></div>
     </div>
 
     <div id="tab-settings" class="tab-panel">
@@ -644,37 +639,38 @@ async function cloudSave() {
   }
 }
 
-// RESULTS TABLE — 1 γραμμή ανά μαθητή με συνολικό σκορ
+// RESULTS — κάρτες (mobile-friendly)
 function renderResultsTable() {
   const filter = (document.getElementById('filter-name').value||'').toLowerCase();
-
-  // Ομαδοποίηση ανά μαθητή
   const byStudent = {};
   remoteData.results.forEach((r,i) => {
     if (!byStudent[r.name]) byStudent[r.name] = [];
     byStudent[r.name].push({...r, _idx:i});
   });
-
   const students = Object.keys(byStudent).filter(n => n.toLowerCase().includes(filter));
-  const tbody = document.getElementById('results-tbody');
-  if (!students.length) { tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--ink3);padding:2rem;font-size:0.85rem">Δεν βρέθηκαν αποτελέσματα.</td></tr>'; return; }
-
-  tbody.innerHTML = students.map((name, i) => {
+  const el = document.getElementById('results-cards');
+  if (!students.length) {
+    el.innerHTML = '<div class="empty-state"><div class="big">📊</div><p>Δεν βρέθηκαν αποτελέσματα.</p></div>';
+    return;
+  }
+  el.innerHTML = students.map((name, i) => {
     const groups = byStudent[name];
     const totalCorrect = groups.reduce((s,r)=>s+r.correct,0);
     const totalQ = groups.reduce((s,r)=>s+r.total,0);
     const pct = Math.round(totalCorrect/totalQ*100);
     const cls = pct>=70?'high':pct>=50?'mid':'low';
     const lastDate = groups[groups.length-1].date;
-    return `<tr>
-      <td style="color:var(--ink3);font-size:0.78rem">${i+1}</td>
-      <td style="font-weight:500">${esc(name)}</td>
-      <td><span class="score-pill ${cls}">${totalCorrect}/${totalQ} (${pct}%)</span></td>
-      <td style="color:var(--accent)">${totalCorrect}</td>
-      <td style="color:var(--red)">${totalQ-totalCorrect}</td>
-      <td style="color:var(--ink3);font-size:0.78rem">${groups.length} ομάδες · ${lastDate}</td>
-      <td><button class="btn-sm" onclick="showResultDetails('${name}')" style="padding:4px 10px;font-size:0.75rem">🔍 Λεπτομέρειες</button></td>
-    </tr>`;
+    return `<div class="q-item" style="margin-bottom:0.6rem;flex-wrap:wrap;gap:0.5rem">
+      <span class="q-num">${i+1}</span>
+      <div class="q-content">
+        <p class="q-text" style="font-weight:500">${esc(name)}</p>
+        <div class="q-meta">
+          <span class="score-pill ${cls}" style="display:inline-block">${totalCorrect}/${totalQ} (${pct}%)</span>
+          <span class="q-page">${groups.length} ομάδες · ${lastDate}</span>
+        </div>
+      </div>
+      <button class="btn-sm" onclick="showResultDetails('${name.replace(/'/g,"\\'")}')">🔍 Λεπτομέρειες</button>
+    </div>`;
   }).join('');
 }
 
@@ -824,6 +820,19 @@ async function showResults() {
   document.getElementById('review-list').innerHTML = finalHTML;
   show('screen-results');
 }
+function backToResults() {
+  show('screen-admin');
+  const tabs = document.querySelectorAll('.admin-tab');
+  tabs.forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  tabs.forEach(t => {
+    if (t.textContent.includes('Αποτελέσματα')) {
+      t.classList.add('active');
+      document.getElementById('tab-results').classList.add('active');
+      renderResultsTable();
+    }
+  });
+}
 function goHome(){showHome()}
 
 function showResultDetails(studentName) {
@@ -905,15 +914,15 @@ async function importQuestions(e) {
 </script>
 <!-- DETAIL SCREEN -->
 <div id="screen-detail" class="screen hidden" style="justify-content:flex-start;padding:0;background:var(--paper)">
-  <div style="background:#fff;border-bottom:1px solid var(--border);padding:0.85rem 2rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;z-index:50">
-    <button class="btn-sm" onclick="show('screen-admin');switchTab('tab-results',document.querySelectorAll('.admin-tab')[1])">← Πίσω</button>
-    <div>
-      <span id="detail-title" style="font-family:var(--font-display);font-size:1rem;color:var(--ink)"></span>
-      <span id="detail-meta" style="font-size:0.78rem;color:var(--ink3);margin-left:0.8rem"></span>
+  <div style="background:#fff;border-bottom:1px solid var(--border);padding:0.85rem 1rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;z-index:50">
+    <button class="btn-sm" onclick="backToResults()">← Πίσω</button>
+    <div style="min-width:0">
+      <span id="detail-title" style="font-family:var(--font-display);font-size:0.95rem;color:var(--ink);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></span>
+      <span id="detail-meta" style="font-size:0.75rem;color:var(--ink3)"></span>
     </div>
   </div>
-  <div style="padding:2rem;max-width:720px;margin:0 auto;width:100%">
-    <div id="detail-stats" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1.8rem"></div>
+  <div style="padding:1rem;max-width:720px;margin:0 auto;width:100%">
+    <div id="detail-stats" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.6rem;margin-bottom:1.5rem"></div>
     <p style="font-size:0.72rem;color:var(--ink3);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:0.8rem">Αναλυτικά</p>
     <div id="detail-body" style="display:flex;flex-direction:column;gap:0.5rem"></div>
   </div>
