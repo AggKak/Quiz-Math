@@ -685,12 +685,17 @@ async function saveSettings() {
 
 // HOME
 function showHome() {
-  const mySessions = remoteData.results.filter(r=>r.name===currentStudent).length;
+  const myResults = remoteData.results.filter(r=>r.name===currentStudent);
+  const groupSize = 20;
+  const totalGroups = Math.ceil(remoteData.questions.length / groupSize) || 0;
+  const groupIndex = myResults.length % totalGroups || 0;
+  const currentGroup = groupIndex + 1;
+
   document.getElementById('home-total').textContent = remoteData.questions.length;
-  document.getElementById('home-sessions').textContent = mySessions;
+  document.getElementById('home-sessions').textContent = myResults.length;
   document.getElementById('home-greeting').textContent = 'Καλώς ήρθες, ' + currentStudent + '!';
-  const batches = Math.ceil(remoteData.questions.length/20)||0;
-  document.getElementById('home-sub-text').textContent = remoteData.questions.length + ' ερωτήσεις · ' + batches + ' ομάδες των 20';
+  document.getElementById('home-sub-text').textContent = 
+    remoteData.questions.length + ' ερωτήσεις · ' + totalGroups + ' ομάδες · Επόμενη: Ομάδα ' + currentGroup + '/' + totalGroups;
   show('screen-home');
 }
 
@@ -699,8 +704,20 @@ function shuffle(arr){const a=[...arr];for(let i=a.length-1;i>0;i--){const j=Mat
 
 function startQuiz() {
   if (!remoteData.questions.length) { alert('Δεν υπάρχουν ερωτήσεις ακόμα.'); return; }
-  const pool = shuffle(remoteData.questions).slice(0,20);
-  currentSession = {qs:pool, answers:new Array(pool.length).fill(null), cur:0};
+  
+  // Βρες ποια ομάδα των 20 αντιστοιχεί στον μαθητή
+  const myResults = remoteData.results.filter(r => r.name === currentStudent);
+  const completedGroups = myResults.length; // κάθε quiz = μια ομάδα
+  const groupSize = 20;
+  const totalGroups = Math.ceil(remoteData.questions.length / groupSize);
+  const groupIndex = completedGroups % totalGroups; // επιστρέφει στην αρχή αν τελειώσουν όλες
+
+  const start = groupIndex * groupSize;
+  const end = Math.min(start + groupSize, remoteData.questions.length);
+  const groupQuestions = remoteData.questions.slice(start, end);
+  const pool = shuffle(groupQuestions);
+
+  currentSession = {qs:pool, answers:new Array(pool.length).fill(null), cur:0, groupIndex, totalGroups};
   renderQuizQ();
   show('screen-quiz');
 }
