@@ -644,23 +644,36 @@ async function cloudSave() {
   }
 }
 
-// RESULTS TABLE
+// RESULTS TABLE — 1 γραμμή ανά μαθητή με συνολικό σκορ
 function renderResultsTable() {
   const filter = (document.getElementById('filter-name').value||'').toLowerCase();
-  const withIdx = remoteData.results.map((r,i)=>({...r,_idx:i})).filter(r=>r.name.toLowerCase().includes(filter));
+
+  // Ομαδοποίηση ανά μαθητή
+  const byStudent = {};
+  remoteData.results.forEach((r,i) => {
+    if (!byStudent[r.name]) byStudent[r.name] = [];
+    byStudent[r.name].push({...r, _idx:i});
+  });
+
+  const students = Object.keys(byStudent).filter(n => n.toLowerCase().includes(filter));
   const tbody = document.getElementById('results-tbody');
-  if (!withIdx.length) { tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--ink3);padding:2rem;font-size:0.85rem">Δεν βρέθηκαν αποτελέσματα.</td></tr>'; return; }
-  tbody.innerHTML = withIdx.slice().reverse().map((r,i) => {
-    const pct = Math.round(r.correct/r.total*100);
+  if (!students.length) { tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--ink3);padding:2rem;font-size:0.85rem">Δεν βρέθηκαν αποτελέσματα.</td></tr>'; return; }
+
+  tbody.innerHTML = students.map((name, i) => {
+    const groups = byStudent[name];
+    const totalCorrect = groups.reduce((s,r)=>s+r.correct,0);
+    const totalQ = groups.reduce((s,r)=>s+r.total,0);
+    const pct = Math.round(totalCorrect/totalQ*100);
     const cls = pct>=70?'high':pct>=50?'mid':'low';
+    const lastDate = groups[groups.length-1].date;
     return `<tr>
-      <td style="color:var(--ink3);font-size:0.78rem">${withIdx.length-i}</td>
-      <td style="font-weight:500">${esc(r.name)}</td>
-      <td><span class="score-pill ${cls}">${r.correct}/${r.total} (${pct}%)</span></td>
-      <td style="color:var(--accent)">${r.correct}</td>
-      <td style="color:var(--red)">${r.total-r.correct}</td>
-      <td style="color:var(--ink3);font-size:0.78rem">${r.date}</td>
-      <td><button class="btn-sm" onclick="showResultDetails(${r._idx})" style="padding:4px 10px;font-size:0.75rem">🔍 Λεπτομέρειες</button></td>
+      <td style="color:var(--ink3);font-size:0.78rem">${i+1}</td>
+      <td style="font-weight:500">${esc(name)}</td>
+      <td><span class="score-pill ${cls}">${totalCorrect}/${totalQ} (${pct}%)</span></td>
+      <td style="color:var(--accent)">${totalCorrect}</td>
+      <td style="color:var(--red)">${totalQ-totalCorrect}</td>
+      <td style="color:var(--ink3);font-size:0.78rem">${groups.length} ομάδες · ${lastDate}</td>
+      <td><button class="btn-sm" onclick="showResultDetails('${name}')" style="padding:4px 10px;font-size:0.75rem">🔍 Λεπτομέρειες</button></td>
     </tr>`;
   }).join('');
 }
@@ -760,7 +773,7 @@ function confirmExit(){if(confirm('Έξοδος από το quiz;')){showHome()}
 
 // RESULTS
 async function showResults() {
-  const {qs,answers} = currentSession;
+  const {qs, answers, groupIndex, totalGroups} = currentSession;
   let correct = 0;
   const reviewHTML = qs.map((q,i) => {
     const userAns = answers[i];
@@ -786,21 +799,81 @@ async function showResults() {
   const now = new Date();
   const date = now.toLocaleDateString('el-GR',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+now.toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit'});
   const details = qs.map((q,i)=>({text:q.text, correct_answer:q.answer, user_answer:answers[i], page:q.page||''}));
-  remoteData.results.push({name:currentStudent, correct, total:qs.length, date, details});
+  const isLastGroup = (groupIndex+1) >= totalGroups;
+  remoteData.results.push({name:currentStudent, correct, total:qs.length, date, details, groupIndex, groupLabel:'Ομάδα '+(groupIndex+1)+'/'+totalGroups});
   saveToCloud(remoteData).catch(()=>{});
 
-  document.getElementById('results-name-display').textContent = currentStudent;
+  document.getElementById('results-name-display').textContent = currentStudent + ' · Ομάδα ' + (groupIndex+1) + '/' + totalGroups;
   document.getElementById('res-correct').textContent = correct;
   document.getElementById('res-tot').textContent = '/'+qs.length;
   document.getElementById('res-c').textContent = correct;
   document.getElementById('res-w').textContent = qs.length-correct;
   document.getElementById('res-pct').textContent = Math.round(correct/qs.length*100)+'%';
-  document.getElementById('review-list').innerHTML = reviewHTML;
+
+  let finalHTML = reviewHTML;
+  if (isLastGroup) {
+    const myResults = remoteData.results.filter(r=>r.name===currentStudent);
+    const totalCorrect = myResults.reduce((s,r)=>s+r.correct,0);
+    const totalQ = myResults.reduce((s,r)=>s+r.total,0);
+    finalHTML = `<div style="background:var(--accent-light);border:1px solid #86efac;border-radius:var(--radius-lg);padding:1.5rem;text-align:center;margin-bottom:1rem">
+      <div style="font-size:2rem;margin-bottom:0.5rem">🎉</div>
+      <p style="font-family:var(--font-display);font-size:1.1rem;color:var(--accent);margin-bottom:0.3rem">Ολοκλήρωσες όλες τις ερωτήσεις!</p>
+      <p style="font-size:0.85rem;color:var(--ink3)">Συνολικό σκορ: <strong>${totalCorrect}/${totalQ}</strong> (${Math.round(totalCorrect/totalQ*100)}%)</p>
+    </div>` + reviewHTML;
+  }
+  document.getElementById('review-list').innerHTML = finalHTML;
   show('screen-results');
 }
 function goHome(){showHome()}
 
-// ── JSON EXPORT / IMPORT ──
+function showResultDetails(studentName) {
+  const groups = remoteData.results.filter(r=>r.name===studentName);
+  if (!groups.length) return;
+  const totalCorrect = groups.reduce((s,r)=>s+r.correct,0);
+  const totalQ = groups.reduce((s,r)=>s+r.total,0);
+  const pct = Math.round(totalCorrect/totalQ*100);
+  const cls = pct>=70?'high':pct>=50?'mid':'low';
+  const clrMap = {high:'var(--accent)',mid:'var(--gold)',low:'var(--red)'};
+
+  document.getElementById('detail-title').textContent = studentName;
+  document.getElementById('detail-meta').textContent = groups.length + ' ομάδες ολοκληρωμένες';
+  document.getElementById('detail-stats').innerHTML = `
+    <div class="res-stat correct"><span class="val">${totalCorrect}</span><span class="lbl">Σωστές</span></div>
+    <div class="res-stat wrong"><span class="val">${totalQ-totalCorrect}</span><span class="lbl">Λάθος</span></div>
+    <div class="res-stat pct"><span class="val" style="color:${clrMap[cls]}">${pct}%</span><span class="lbl">Ποσοστό</span></div>`;
+
+  document.getElementById('detail-body').innerHTML = groups.map((g,gi) => {
+    const gpct = Math.round(g.correct/g.total*100);
+    const gcls = gpct>=70?'high':gpct>=50?'mid':'low';
+    const rows = (g.details||[]).map((d,i) => {
+      const ok = d.user_answer===d.correct_answer;
+      return `<div class="review-item ${ok?'correct':'wrong'}">
+        <span class="review-num">${i+1}</span>
+        <div class="review-text">
+          ${esc(d.text)}
+          <div class="your-answer ${ok?'correct':'wrong'}">
+            Απάντησε: <strong>${d.user_answer?'Σωστό':'Λάθος'}</strong>${!ok?` · Σωστό: <strong>${d.correct_answer?'Σωστό':'Λάθος'}</strong>`:''}
+          </div>
+        </div>
+        <div class="review-meta">
+          <span class="review-result">${ok?'✓ Σωστό':'✗ Λάθος'}</span>
+          ${d.page?`<span class="review-page">📄 ${esc(d.page)}</span>`:''}
+        </div>
+      </div>`;
+    }).join('');
+    return `<div style="margin-bottom:1.5rem">
+      <div style="display:flex;align-items:center;gap:1rem;margin-bottom:0.8rem;padding:0.7rem 1rem;background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg)">
+        <span style="font-family:var(--font-display);font-size:0.9rem;color:var(--ink)">${g.groupLabel||'Ομάδα '+(gi+1)}</span>
+        <span class="score-pill ${gcls}">${g.correct}/${g.total} (${gpct}%)</span>
+        <span style="font-size:0.75rem;color:var(--ink3);margin-left:auto">${g.date}</span>
+      </div>
+      ${rows||'<p style="color:var(--ink3);font-size:0.85rem">Δεν υπάρχουν λεπτομέρειες.</p>'}
+    </div>`;
+  }).join('');
+
+  show('screen-detail');
+  window.scrollTo(0,0);
+}
 function exportQuestions() {
   const blob = new Blob([JSON.stringify({questions: remoteData.questions, version:1}, null, 2)], {type:'application/json'});
   const a = document.createElement('a');
@@ -829,46 +902,6 @@ async function importQuestions(e) {
   e.target.value = '';
 }
 
-function showResultDetails(idx) {
-  const r = remoteData.results[idx];
-  if (!r) return;
-  const pct = Math.round(r.correct/r.total*100);
-  const wrong = r.total - r.correct;
-  const clrMap = {high:'var(--accent)',mid:'var(--gold)',low:'var(--red)'};
-  const cls = pct>=70?'high':pct>=50?'mid':'low';
-
-  document.getElementById('detail-title').textContent = r.name;
-  document.getElementById('detail-meta').textContent = r.date;
-  document.getElementById('detail-stats').innerHTML = `
-    <div class="res-stat correct"><span class="val">${r.correct}</span><span class="lbl">Σωστές</span></div>
-    <div class="res-stat wrong"><span class="val">${wrong}</span><span class="lbl">Λάθος</span></div>
-    <div class="res-stat pct"><span class="val" style="color:${clrMap[cls]}">${pct}%</span><span class="lbl">Ποσοστό</span></div>`;
-
-  const details = r.details || [];
-  document.getElementById('detail-body').innerHTML = details.length
-    ? details.map((d,i) => {
-        const isCorrect = d.user_answer === d.correct_answer;
-        const userLabel = d.user_answer ? 'Σωστό' : 'Λάθος';
-        const corrLabel = d.correct_answer ? 'Σωστό' : 'Λάθος';
-        return `<div class="review-item ${isCorrect?'correct':'wrong'}">
-          <span class="review-num">${i+1}</span>
-          <div class="review-text">
-            ${esc(d.text)}
-            <div class="your-answer ${isCorrect?'correct':'wrong'}">
-              Απάντησε: <strong>${userLabel}</strong>${!isCorrect?` · Σωστό: <strong>${corrLabel}</strong>`:''}
-            </div>
-          </div>
-          <div class="review-meta">
-            <span class="review-result">${isCorrect?'✓ Σωστό':'✗ Λάθος'}</span>
-            ${d.page?`<span class="review-page">📄 ${esc(d.page)}</span>`:''}
-          </div>
-        </div>`;
-      }).join('')
-    : '<p style="color:var(--ink3);font-size:0.85rem;padding:1rem 0">Δεν υπάρχουν λεπτομέρειες (παλιά εγγραφή).</p>';
-
-  show('screen-detail');
-  window.scrollTo(0,0);
-}
 </script>
 <!-- DETAIL SCREEN -->
 <div id="screen-detail" class="screen hidden" style="justify-content:flex-start;padding:0;background:var(--paper)">
